@@ -2,9 +2,11 @@ import { ShoppingBag, Menu, X } from "lucide-react";
 import { useState } from "react";
 import JangadaLogo from "./JangadaLogo";
 import { useCart } from "../context/CartContext";
+import { formatBRL, FREE_SHIPPING_THRESHOLD } from "../lib/pricing";
 
 const LINKS = [
   { href: "#catalogo", label: "Catálogo" },
+  { href: "#classificacao", label: "Classificação" },
   { href: "#sobre", label: "Sobre" },
   { href: "#loja-fisica", label: "Loja física" },
   { href: "#contato", label: "Contato" },
@@ -16,6 +18,10 @@ export default function Navbar({ onOpenCart }) {
 
   return (
     <header className="sticky top-0 z-40 bg-night/90 backdrop-blur border-b border-white/10">
+      <div className="bg-sun text-night text-xs font-semibold text-center py-1.5 px-4">
+        📦 Frete grátis para todo o Brasil em compras acima de{" "}
+        {formatBRL(FREE_SHIPPING_THRESHOLD)}
+      </div>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
         <a href="#topo" className="flex items-center gap-2">
           <JangadaLogo />

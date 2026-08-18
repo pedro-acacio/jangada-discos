@@ -6,6 +6,7 @@
 // Environment Variables). Sem essa variável, a função responde 501 e o
 // front-end cai no fluxo de demonstração (ver src/components/Checkout.jsx).
 import { MercadoPagoConfig, Preference } from "mercadopago";
+import { PIX_DISCOUNT_RATE } from "../src/lib/pricing.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -19,11 +20,17 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { items, shipping, buyer } = req.body ?? {};
+  const { items, shipping, buyer, paymentMethod } = req.body ?? {};
   if (!Array.isArray(items) || items.length === 0) {
     res.status(400).json({ error: "Carrinho vazio" });
     return;
   }
+
+  // O preço nunca vem do cliente: recalculamos o desconto de Pix aqui a
+  // partir do preço de catálogo, pra ninguém conseguir manipular o total no
+  // front-end antes de mandar pro Mercado Pago.
+  const isPix = paymentMethod === "pix";
+  const unitPrice = (price) => Number(price) * (isPix ? 1 - PIX_DISCOUNT_RATE : 1);
 
   try {
     const client = new MercadoPagoConfig({ accessToken });
@@ -33,7 +40,7 @@ export default async function handler(req, res) {
       id: item.id,
       title: `${item.title} — ${item.artist}`,
       quantity: item.qty,
-      unit_price: Number(item.price),
+      unit_price: unitPrice(item.price),
       currency_id: "BRL",
     }));
 
@@ -60,6 +67,24 @@ export default async function handler(req, res) {
         },
         auto_return: "approved",
         notification_url: `${siteUrl}/api/mercado-pago-webhook`,
+        // Se o cliente escolheu Pix no nosso checkout (pelo desconto), só faz
+        // sentido deixar ele pagar via Pix na tela do Mercado Pago — do
+        // contrário alguém pagaria no cartão pelo preço com desconto de Pix.
+        // IDs de payment_type conforme a documentação do Checkout Pro;
+        // confirme na doc atual da Mercado Pago antes de ir pra produção,
+        // esses identificadores podem mudar.
+        ...(isPix && {
+          payment_methods: {
+            excluded_payment_types: [
+              { id: "credit_card" },
+              { id: "debit_card" },
+              { id: "prepaid_card" },
+              { id: "ticket" },
+              { id: "atm" },
+              { id: "digital_currency" },
+            ],
+          },
+        }),
       },
     });
 

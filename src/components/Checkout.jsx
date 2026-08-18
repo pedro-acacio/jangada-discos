@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X, Loader2, CheckCircle2 } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { quoteShipping } from "../lib/shipping";
+import { formatBRL, pixPrice, PIX_DISCOUNT_RATE } from "../lib/pricing";
 
 const STEPS = { FORM: "form", PAYING: "paying", DONE: "done" };
 
@@ -14,7 +15,9 @@ export default function Checkout({ open, onClose }) {
   const [shippingOptions, setShippingOptions] = useState(null);
   const [shippingChoice, setShippingChoice] = useState(null);
   const [shippingEstimated, setShippingEstimated] = useState(false);
+  const [shippingFree, setShippingFree] = useState(false);
   const [loadingShipping, setLoadingShipping] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("card");
   const [error, setError] = useState("");
 
   if (!open) return null;
@@ -26,9 +29,10 @@ export default function Checkout({ open, onClose }) {
     setShippingOptions(null);
     setShippingChoice(null);
     try {
-      const { options, estimated } = await quoteShipping(cep, items);
+      const { options, estimated, free } = await quoteShipping(cep, items, total);
       setShippingOptions(options);
       setShippingEstimated(estimated);
+      setShippingFree(free);
       setShippingChoice(options[0]);
     } catch (err) {
       setError(err.message || "Não foi possível calcular o frete.");
@@ -48,6 +52,7 @@ export default function Checkout({ open, onClose }) {
           items,
           shipping: shippingChoice,
           buyer: { name, email },
+          paymentMethod,
         }),
       });
       if (res.ok) {
@@ -67,7 +72,8 @@ export default function Checkout({ open, onClose }) {
     }
   }
 
-  const grandTotal = total + (shippingChoice?.price ?? 0);
+  const productsTotal = paymentMethod === "pix" ? pixPrice(total) : total;
+  const grandTotal = productsTotal + (shippingChoice?.price ?? 0);
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4">
@@ -100,8 +106,7 @@ export default function Checkout({ open, onClose }) {
             <>
               <h3 className="font-display font-700 text-xl mb-1">Fechar pedido</h3>
               <p className="text-sand/60 text-sm mb-6">
-                {items.length} {items.length === 1 ? "item" : "itens"} · R${" "}
-                {total.toFixed(2).replace(".", ",")}
+                {items.length} {items.length === 1 ? "item" : "itens"} · {formatBRL(total)}
               </p>
 
               <div className="space-y-4">
@@ -148,7 +153,12 @@ export default function Checkout({ open, onClose }) {
 
                 {shippingOptions && (
                   <div className="space-y-2">
-                    {shippingEstimated && (
+                    {shippingFree && (
+                      <p className="text-[11px] text-emerald-400 font-semibold">
+                        Pedido acima de {formatBRL(300)} — frete grátis!
+                      </p>
+                    )}
+                    {shippingEstimated && !shippingFree && (
                       <p className="text-[11px] text-sand/50">
                         Valor estimado — conecte a API do Melhor Envio para cotação real.
                       </p>
@@ -171,17 +181,51 @@ export default function Checkout({ open, onClose }) {
                           {opt.service} · {opt.days}d úteis
                         </span>
                         <span className="font-semibold">
-                          R$ {opt.price.toFixed(2).replace(".", ",")}
+                          {opt.price === 0 ? "Grátis" : formatBRL(opt.price)}
                         </span>
                       </label>
                     ))}
                   </div>
                 )}
 
+                <div>
+                  <label className="block text-xs text-sand/60 mb-1.5">Forma de pagamento</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("card")}
+                      className={`border rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                        paymentMethod === "card"
+                          ? "border-sun bg-sun/10"
+                          : "border-white/10 text-sand/70"
+                      }`}
+                    >
+                      Cartão
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("pix")}
+                      className={`border rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                        paymentMethod === "pix"
+                          ? "border-sun bg-sun/10"
+                          : "border-white/10 text-sand/70"
+                      }`}
+                    >
+                      Pix
+                    </button>
+                  </div>
+                  {paymentMethod === "pix" && (
+                    <p className="text-[11px] text-emerald-400 mt-1.5">
+                      {Math.round(PIX_DISCOUNT_RATE * 100)}% de desconto aplicado nos produtos
+                      pagando com Pix.
+                    </p>
+                  )}
+                </div>
+
                 <div className="pt-4 border-t border-white/10 flex items-center justify-between">
                   <span className="text-sand/70 text-sm">Total</span>
                   <span className="font-display font-700 text-lg">
-                    R$ {grandTotal.toFixed(2).replace(".", ",")}
+                    {formatBRL(grandTotal)}
                   </span>
                 </div>
 

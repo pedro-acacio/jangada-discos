@@ -1,11 +1,14 @@
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, Heart } from "lucide-react";
 import { CATEGORIES, PRODUCTS } from "../data/products";
 import ProductCard from "./ProductCard";
+import { useFavorites } from "../context/FavoritesContext";
 
-export default function Catalog() {
+export default function Catalog({ onBuyNow }) {
   const [category, setCategory] = useState("Todos");
   const [query, setQuery] = useState("");
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const { ids: favoriteIds } = useFavorites();
 
   const filtered = useMemo(() => {
     return PRODUCTS.filter((p) => {
@@ -13,9 +16,10 @@ export default function Catalog() {
       const matchesQuery =
         query.trim() === "" ||
         `${p.title} ${p.artist}`.toLowerCase().includes(query.toLowerCase());
-      return matchesCategory && matchesQuery;
+      const matchesFavorites = !onlyFavorites || favoriteIds.includes(p.id);
+      return matchesCategory && matchesQuery && matchesFavorites;
     });
-  }, [category, query]);
+  }, [category, query, onlyFavorites, favoriteIds]);
 
   return (
     <section id="catalogo" className="max-w-6xl mx-auto px-4 sm:px-6 py-20">
@@ -38,7 +42,7 @@ export default function Catalog() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-8">
+      <div className="flex flex-wrap items-center gap-2 mb-8">
         {CATEGORIES.map((c) => (
           <button
             key={c}
@@ -52,14 +56,30 @@ export default function Catalog() {
             {c}
           </button>
         ))}
+
+        <button
+          onClick={() => setOnlyFavorites((v) => !v)}
+          className={`ml-auto flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+            onlyFavorites
+              ? "bg-coral text-white border-coral"
+              : "border-white/15 text-sand/70 hover:border-coral/60"
+          }`}
+        >
+          <Heart className={`w-3.5 h-3.5 ${onlyFavorites ? "fill-white" : ""}`} />
+          Favoritos
+        </button>
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-sand/50 text-sm">Nenhum disco encontrado.</p>
+        <p className="text-sand/50 text-sm">
+          {onlyFavorites
+            ? "Você ainda não favoritou nenhum disco."
+            : "Nenhum disco encontrado."}
+        </p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
           {filtered.map((p) => (
-            <ProductCard key={p.id} product={p} />
+            <ProductCard key={p.id} product={p} onBuyNow={onBuyNow} />
           ))}
         </div>
       )}

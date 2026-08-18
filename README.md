@@ -16,6 +16,24 @@ modo demonstração: o frete usa uma estimativa local por região e o botão de
 pagamento simula um pedido concluído em vez de redirecionar para o Mercado
 Pago de verdade.
 
+## Recursos incorporados (inspirados na Hifive Discos e Direct Discos)
+
+- Frete grátis acima de um valor mínimo, desconto pagando via Pix e
+  parcelamento exibido nos cards — parâmetros configuráveis em
+  `src/lib/pricing.js` (`FREE_SHIPPING_THRESHOLD`, `PIX_DISCOUNT_RATE`,
+  `INSTALLMENTS`). O desconto de Pix é recalculado no servidor
+  (`api/create-preference.js`), nunca confiando no preço vindo do
+  navegador, e a preferência do Mercado Pago já restringe o método de
+  pagamento pra Pix quando esse desconto é aplicado.
+- Botão "Comprar" nos cards faz compra rápida (adiciona ao carrinho e abre o
+  checkout direto); o "+" ao lado só adiciona sem sair da página.
+- Favoritos (coração nos cards + filtro "Favoritos" no catálogo),
+  persistidos em localStorage.
+- Tabela de classificação de discos (`#classificacao`), na escala Goldmine
+  (Mint, NM, VG+, VG, etc.) — dados em `src/data/grading.js`.
+- Botão flutuante de contato apontando pro Instagram da loja (não inventei
+  um número de WhatsApp — troque pelo link real quando a loja tiver um).
+
 ## O que falta para ir ao ar de verdade
 
 1. **Catálogo real** — `src/data/products.js` tem 9 discos de exemplo (capas

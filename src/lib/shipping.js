@@ -1,10 +1,20 @@
+import { FREE_SHIPPING_THRESHOLD } from "./pricing";
+
 // Tenta cotar o frete via função serverless (Melhor Envio). Se a função não
 // estiver configurada (sem token, rodando só localmente, etc.), cai num
 // cálculo estimado por região a partir do CEP, só para não travar a demo.
-export async function quoteShipping(cep, items) {
+export async function quoteShipping(cep, items, subtotal) {
   const cleanCep = cep.replace(/\D/g, "");
   if (cleanCep.length !== 8) {
     throw new Error("CEP inválido");
+  }
+
+  if (subtotal >= FREE_SHIPPING_THRESHOLD) {
+    return {
+      options: [{ service: "Frete grátis (PAC)", price: 0, days: 6 }],
+      estimated: false,
+      free: true,
+    };
   }
 
   try {
@@ -16,14 +26,14 @@ export async function quoteShipping(cep, items) {
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data.options) && data.options.length > 0) {
-        return { options: data.options, estimated: false };
+        return { options: data.options, estimated: false, free: false };
       }
     }
   } catch {
     // segue para a estimativa local
   }
 
-  return { options: estimateByRegion(cleanCep), estimated: true };
+  return { options: estimateByRegion(cleanCep), estimated: true, free: false };
 }
 
 function estimateByRegion(cep) {
